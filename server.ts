@@ -17,27 +17,42 @@ app.use('/', (req, res) => {
 });
 
 let users = [];
+let rooms = [];
 let messages = [];
 
 io.on('connection', socket => {
 
-    socket.on('join room', user => {
-        console.log('user joined:', {...user, socketId: socket.id});
-        users.push({...user, socketId: socket.id});
+    socket.on('join room', (roomId, user) => {
+        Object.assign(user, {socketId: socket.id});
+        socket.join(roomId);
 
-        socket.emit('all messages history', messages);
+        if(rooms[roomId]){
+            rooms[roomId].push(user);
+        } else {
+            rooms[roomId] = [user];
+            messages[roomId] = [];
+        }
         
-        const otherUsers = users.filter(u => u.socketId !== socket.id);
-        socket.emit('all users connected', otherUsers);
-        console.log('users, ', users)
-    });
+        const usersRoom = rooms[roomId].filter(u => u.socketId !== socket.id);
+        socket.emit('all users connected', usersRoom);
+        socket.emit('all messages history', messages[roomId]);
 
-    socket.on('sendMessage', data => {
-        console.log('received message:', data);
-        messages.push(data);
+        socket.to(roomId).emit('user-joined', {...user, socketId: socket.id});
 
-        socket.emit('received my own message', data);
-        socket.broadcast.emit('received message', data);
+        console.log(`now users in the room ${roomId} is: `, rooms[roomId]);
+
+        socket.on('sendMessage', data => {
+            console.log(`received message in the room ${roomId}:`, data);
+            messages[roomId].push(data);
+            io.in(roomId).emit('received message', data);
+        });
+
+        socket.on('disconnect', data => {
+            console.log('user disconnected!', data);
+            rooms[roomId] = rooms[roomId].filter(user =>user.socketId !== socket.id )
+            socket.to(roomId).emit('user-disconnected', socket.id);
+            console.log(`now users in the room ${roomId} is: ${rooms[roomId]}`);
+        })
     });
 });
 
