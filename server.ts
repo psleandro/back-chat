@@ -98,6 +98,12 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('bla', (roomId) => {
+    const users = rooms[roomId].filter((u) => u.socketId !== socket.id) || [];
+
+    socket.emit('users-connected', users);
+  });
+
   socket.on('req-room-invite-verification', (roomId) => {
     const room = rooms[roomId];
 
