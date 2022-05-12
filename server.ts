@@ -20,6 +20,7 @@ app.use('/', (req, res) => {
 let users = [];
 let rooms = [];
 let messages = [];
+let sharers = [];
 
 io.on('connection', (socket) => {
   socket.on('join-room', (roomId, user) => {
@@ -35,28 +36,24 @@ io.on('connection', (socket) => {
 
     const usersRoom =
       rooms[roomId].filter((u) => u.socketId !== socket.id) || [];
+
     socket.emit('get-all-users-connected', usersRoom);
     socket.emit('all messages history', messages[roomId]);
 
     socket.to(roomId).emit('user-joined', { ...user, socketId: socket.id });
 
-    console.log(`now users in the room ${roomId} is: `, rooms[roomId]);
-    // console.log(`now users in the room ${roomId} is: `, usersRoom);
-
     socket.on('sendMessage', (data) => {
-      console.log(`received message in the room ${roomId}:`, data);
+      console.log('sendMessage');
+
       messages[roomId].push(data);
       io.in(roomId).emit('received message', data);
     });
 
     socket.on('request connection to user', (data) => {
-      console.log(
-        `new request peer from ${data.callerId} to ${data.userToSignal}`,
-        data,
-      );
       const [callerDto] = rooms[roomId].filter(
         (u) => u.socketId === data.callerId,
       );
+
       io.to(data.userToSignal).emit('receive request from user joined', {
         caller: callerDto,
         signal: data.signal,
@@ -64,11 +61,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('response user-joined request', (data) => {
-      console.log(`my socket id is: `, socket.id);
-      console.log(
-        `returning response from: ${socket.id} to ${data.callerId} `,
-        data,
-      );
       io.to(data.callerId).emit('receiving final signal response', {
         signal: data.signal,
         userToSignalId: socket.id,
@@ -76,32 +68,33 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', (data) => {
-      console.log('user disconnected!', data);
       rooms[roomId] = rooms[roomId].filter(
         (user) => user.socketId !== socket.id,
       );
       socket.to(roomId).emit('user-disconnected', user.peerId);
-      console.log(`now users in the room ${roomId} is: ${rooms[roomId]}`);
     });
 
     socket.on('screenShare', (data) => {
-      console.log(`how is sharing ${roomId}:`, data);
+      if (sharers[roomId]) {
+        sharers[roomId].push(data);
+      } else {
+        sharers[roomId] = [data];
+      }
 
-      io.in(roomId).emit('sharer', data);
+      console.log(`compartilhador na sala: ${roomId}`, sharers[roomId]);
+
+      io.in(roomId).emit('sharer', sharers[roomId]);
+    });
+
+    socket.on('verifySharer', (roomId) => {
+      io.in(roomId).emit('sharer', sharers[roomId]);
     });
 
     socket.on('emitting peer signal', (data) => {
-      console.log('new user added on peer with: ', data);
       io.to(data.userToSignal).emit('user joined in call', {
         callerId: data.callerId,
       });
     });
-  });
-
-  socket.on('bla', (roomId) => {
-    const users = rooms[roomId].filter((u) => u.socketId !== socket.id) || [];
-
-    socket.emit('users-connected', users);
   });
 
   socket.on('req-room-invite-verification', (roomId) => {
