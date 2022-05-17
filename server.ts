@@ -20,6 +20,7 @@ app.use('/', (req, res) => {
 let users = [];
 let rooms = [];
 let messages = [];
+let sharer = [];
 
 io.on('connection', (socket) => {
   socket.on('join-room', (roomId, user) => {
@@ -60,10 +61,10 @@ io.on('connection', (socket) => {
     socket.on('request connection to user', (data) => {
       console.log(
         `new request peer from ${data.callerId} to ${data.userToSignal}`,
-        data
+        data,
       );
       const [callerDto] = rooms[roomId].filter(
-        (u) => u.socketId === data.callerId
+        (u) => u.socketId === data.callerId,
       );
       io.to(data.userToSignal).emit('receive request from user joined', {
         caller: callerDto,
@@ -75,7 +76,7 @@ io.on('connection', (socket) => {
       console.log(`my socket id is: `, socket.id);
       console.log(
         `returning response from: ${socket.id} to ${data.callerId} `,
-        data
+        data,
       );
       io.to(data.callerId).emit('receiving final signal response', {
         signal: data.signal,
@@ -86,11 +87,12 @@ io.on('connection', (socket) => {
     socket.on('disconnect', (data) => {
       console.log('user disconnected!', data);
       rooms[roomId] = rooms[roomId].filter(
-        (user) => user.socketId !== socket.id
+        (user) => user.socketId !== socket.id,
       );
+
       console.log(
         'aisdhfsadf:',
-        rooms[roomId].filter((user) => user.socketId !== socket.id)
+        rooms[roomId].filter((user) => user.socketId !== socket.id),
       );
 
       socket.to(roomId).emit('user-disconnected', user.peerId);
@@ -99,9 +101,13 @@ io.on('connection', (socket) => {
     });
 
     socket.on('screenShare', (data) => {
-      console.log(`how is sharing ${roomId}:`, data);
+      sharer[roomId] = data;
 
-      io.in(roomId).emit('sharer', data);
+      io.in(roomId).emit('sharer', sharer[roomId]);
+    });
+
+    socket.on('verifySharer', (roomId) => {
+      io.in(roomId).emit('sharer', sharer[roomId]);
     });
 
     socket.on('emitting peer signal', (data) => {
@@ -110,12 +116,6 @@ io.on('connection', (socket) => {
         callerId: data.callerId,
       });
     });
-  });
-
-  socket.on('bla', (roomId) => {
-    const users = rooms[roomId];
-
-    socket.emit('users-connected', users);
   });
 
   socket.on('req-room-invite-verification', (roomId) => {
