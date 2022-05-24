@@ -34,13 +34,21 @@ io.on('connection', (socket) => {
     socket.join(roomId);
 
     if (rooms[roomId]) {
-      rooms[roomId].push(user);
+      const userExists = rooms[roomId].find(
+        (usr) => usr.userId === user.userId
+      );
+      if (userExists) {
+        const newRoom = rooms[roomId].map((usr) =>
+          usr.userId === userExists.userId ? user : usr
+        );
+        rooms[roomId] = newRoom;
+      } else {
+        rooms[roomId].push(user);
+      }
     } else {
       rooms[roomId] = [user];
       messages[roomId] = [];
     }
-
-    console.log('user', user);
 
     const usersRoom =
       rooms[roomId].filter((u) => u.socketId !== socket.id) || [];
@@ -61,10 +69,10 @@ io.on('connection', (socket) => {
     socket.on('request connection to user', (data) => {
       console.log(
         `new request peer from ${data.callerId} to ${data.userToSignal}`,
-        data,
+        data
       );
       const [callerDto] = rooms[roomId].filter(
-        (u) => u.socketId === data.callerId,
+        (u) => u.socketId === data.callerId
       );
       io.to(data.userToSignal).emit('receive request from user joined', {
         caller: callerDto,
@@ -76,7 +84,7 @@ io.on('connection', (socket) => {
       console.log(`my socket id is: `, socket.id);
       console.log(
         `returning response from: ${socket.id} to ${data.callerId} `,
-        data,
+        data
       );
       io.to(data.callerId).emit('receiving final signal response', {
         signal: data.signal,
@@ -87,12 +95,12 @@ io.on('connection', (socket) => {
     socket.on('disconnect', (data) => {
       console.log('user disconnected!', data);
       rooms[roomId] = rooms[roomId].filter(
-        (user) => user.socketId !== socket.id,
+        (user) => user.socketId !== socket.id
       );
 
       console.log(
         'aisdhfsadf:',
-        rooms[roomId].filter((user) => user.socketId !== socket.id),
+        rooms[roomId].filter((user) => user.socketId !== socket.id)
       );
 
       socket.to(roomId).emit('user-disconnected', user.peerId);
@@ -107,6 +115,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('verifySharer', (roomId) => {
+      console.log('roomid share', roomId);
+
       io.in(roomId).emit('sharer', sharer[roomId]);
     });
 
