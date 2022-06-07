@@ -21,9 +21,12 @@ let users = [];
 let rooms = [];
 let messages = [];
 let sharer = [];
+let muteds = [];
 
 io.on('connection', (socket) => {
   socket.on('join-room', (roomId, user) => {
+    console.log('join room', user);
+    console.log('join room', user);
     // rooms[roomId].map((u) => {
     //   u.socketId !== socket.id;
     //   if (u.socketId === socket.id) {
@@ -127,6 +130,20 @@ io.on('connection', (socket) => {
       });
     });
   });
+
+  socket.on('mute-microphone',(roomId, peerId) => {
+    console.log('user muted mic: ', peerId, 'in room:', roomId);
+
+    const muted = muteds.find(m => m === peerId);
+    if(muted) {
+      muteds = muteds.filter(m => m !== peerId)
+    } else {
+      muteds.push(peerId);
+    }
+
+    io.in(roomId).emit('update-users-muted', muteds);
+    console.log('all peoples muted is: ', muteds);
+  })
 
   socket.on('req-room-invite-verification', (roomId) => {
     const room = rooms[roomId];
