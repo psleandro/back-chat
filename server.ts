@@ -26,7 +26,6 @@ let muteds = [];
 io.on('connection', (socket) => {
   socket.on('join-room', (roomId, user) => {
     console.log('join room', user);
-    console.log('join room', user);
     // rooms[roomId].map((u) => {
     //   u.socketId !== socket.id;
     //   if (u.socketId === socket.id) {
@@ -96,7 +95,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', (data) => {
-      console.log('user disconnected!', data);
+      const userDisconnected = rooms[roomId].find(
+        (user) => user.socketId === socket.id
+        );
+      console.log('user disconnected!', userDisconnected);
+      
       rooms[roomId] = rooms[roomId].filter(
         (user) => user.socketId !== socket.id
       );
@@ -105,6 +108,13 @@ io.on('connection', (socket) => {
         'aisdhfsadf:',
         rooms[roomId].filter((user) => user.socketId !== socket.id)
       );
+
+      console.log('sharing', sharer[roomId])
+
+      if(sharer[roomId]?.sharerId === userDisconnected.peerId){
+        sharer[roomId] = {}
+        io.in(roomId).emit('sharer', sharer[roomId]);
+      }
 
       socket.to(roomId).emit('user-disconnected', user.peerId);
       console.log(`now users in the room ${roomId} is: ${rooms[roomId]}`);
