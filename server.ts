@@ -56,6 +56,7 @@ io.on('connection', (socket) => {
       rooms[roomId].filter((u) => u.socketId !== socket.id) || [];
     socket.emit('get-all-users-connected', usersRoom);
     socket.emit('all messages history', messages[roomId]);
+    socket.emit('update-users-muted', muteds);
 
     socket.to(roomId).emit('user-joined', { ...user, socketId: socket.id });
 
@@ -94,12 +95,7 @@ io.on('connection', (socket) => {
       });
     });
 
-    socket.on('disconnect', (data) => {
-      const userDisconnected = rooms[roomId].find(
-        (user) => user.socketId === socket.id
-        );
-      console.log('user disconnected!', userDisconnected);
-      
+    socket.on('disconnect', (data) => {    
       rooms[roomId] = rooms[roomId].filter(
         (user) => user.socketId !== socket.id
       );
@@ -109,9 +105,14 @@ io.on('connection', (socket) => {
         rooms[roomId].filter((user) => user.socketId !== socket.id)
       );
 
+      const muted = muteds.find(m => m === user.peerId);
+      if(muted) {
+        muteds = muteds.filter(m => m !== user.peerId)
+      }
+
       console.log('sharing', sharer[roomId])
 
-      if(sharer[roomId]?.sharerId === userDisconnected.peerId){
+      if(sharer[roomId]?.sharerId === user.peerId){
         sharer[roomId] = {}
         io.in(roomId).emit('sharer', sharer[roomId]);
       }
